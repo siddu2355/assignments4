@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Elixire Link Generator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input, button { padding: 8px; font-size: 16px; margin-top: 8px; }
+    #output { margin-top: 12px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <label>Message ID:</label><br>
+  <input id="msg" type="text" placeholder="Enter message id">
+  <button onclick="makeLink()">Generate</button>
+
+  <div id="output"></div>
+
+  <script>
+    function makeLink() {
+      const msg = document.getElementById('msg').value.trim();
+      if (!msg) {
+        alert("Enter a message ID");
+        return;
+      }
+      const shortUrl = "http://thriving-platypus-b3e535.netlify.app/" + encodeURIComponent(msg);
+      document.getElementById('output').innerHTML = 
+        "URL: <a href='" + shortUrl + "' target='_blank'>" + shortUrl + "</a>";
+    }
+  </script>
+</body>
+</html>
