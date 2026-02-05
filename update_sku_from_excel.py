@@ -24,22 +24,30 @@ def extract_medicine_name(row: pd.Series) -> Optional[str]:
     """Extract medicine name from the appropriate suggestion column based on result value"""
     result_value = row.iloc[0]  # First column (result)
     
-    if result_value == 6:
+    # Handle None/NaN values
+    if pd.isna(result_value):
+        return None
+    
+    # Convert to string and handle both numeric and string values
+    result_str = str(result_value).strip()
+    
+    # Skip if result is 6 (after converting to string)
+    if result_str == "6":
         return None
     
     # Try to get from suggestion_(result value) column
-    suggestion_col = f"suggestion_{result_value}"
+    suggestion_col = f"suggestion_{result_str}"
     if suggestion_col in row and pd.notna(row[suggestion_col]):
         return str(row[suggestion_col])
     
     # If no suggestion column, try the result column itself
     if pd.notna(result_value):
-        return str(result_value)
+        return result_str.strip()
     
     return None
 
 def create_medicine_sku_mapping(df: pd.DataFrame) -> Dict[str, str]:
-    """Create a mapping of all medicine names from suggestion_1 to suggestion_5 to their SKU IDs"""
+    """Create a mapping of all medicine names from suggestion columns and direct entries in column 1 to their SKU IDs"""
     # Collect all unique medicine names from suggestion columns
     medicine_names = set()
     
@@ -47,6 +55,17 @@ def create_medicine_sku_mapping(df: pd.DataFrame) -> Dict[str, str]:
         suggestion_col = f"suggestion_{i}"
         if suggestion_col in df.columns:
             medicine_names.update(df[suggestion_col].dropna().astype(str).unique())
+    
+    # Also collect medicine names from column 1 (result column) - but exclude numeric values and "6"
+    result_col = df.iloc[:, 0]  # First column
+    for value in result_col.dropna():
+        str_value = str(value).strip()
+        # Skip if it's a number (1-6) or empty
+        if not str_value.isdigit() and str_value != "":
+            medicine_names.add(str_value)
+    
+    # Strip all medicine names to ensure consistent matching
+    medicine_names = {name.strip() for name in medicine_names if name.strip()}
     
     print(f"Found {len(medicine_names)} unique medicine names to map")
     
@@ -60,20 +79,32 @@ def create_medicine_sku_mapping(df: pd.DataFrame) -> Dict[str, str]:
     for i in range(0, len(medicine_list), batch_size):
         batch = medicine_list[i:i + batch_size]
         
-        # Query database for this batch
-        query = {"medicine_name": {"$in": batch}}
+        # Query database for this batch - also include variations with/without spaces
+        # Create a query that looks for both original and stripped versions
+        query_conditions = []
+        for med_name in batch:
+            query_conditions.append({"medicine_name": med_name})
+            # Also try with common space variations
+            if med_name:
+                query_conditions.append({"medicine_name": med_name + " "})
+                query_conditions.append({"medicine_name": " " + med_name})
+        
+        query = {"$or": query_conditions} if len(query_conditions) > 1 else query_conditions[0]
         results = product_details_300923.find(query, {"medicine_name": 1, "skuID": 1})
         
         for result in results:
             if "medicine_name" in result and "skuID" in result:
-                medicine_sku_mapping[result["medicine_name"]] = result["skuID"]
+                # Strip both medicine_name and skuID to handle extra spaces
+                clean_medicine_name = result["medicine_name"].strip()
+                clean_sku_id = result["skuID"].strip()
+                medicine_sku_mapping[clean_medicine_name] = clean_sku_id
     
     print(f"Mapped {len(medicine_sku_mapping)} medicine names to SKU IDs")
     return medicine_sku_mapping
 
 def find_sku_id(medicine_name: str, medicine_sku_mapping: Dict[str, str]) -> Optional[str]:
     """Find SKU ID from mapping instead of database lookup"""
-    return medicine_sku_mapping.get(medicine_name)
+    return medicine_sku_mapping.get(medicine_name.strip())
 
 def process_excel_file(file_path: str, dry_run: bool = True) -> Dict:
     """Process Excel file and update SKU IDs"""
@@ -236,7 +267,7 @@ def process_folder(folder_path: str, dry_run: bool = True) -> Dict:
     
     return total_results
 
-excel_file_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Uttarakhand Medicos\suggestions_batch_1_rows.csv"  # Update this path
+excel_file_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Singh Pharmacy\suggestions_batch_2_rows_503-1002.csv"  # Update this path
 dry_run = False  # Set to False to execute actual updates
 
 # NEW: Folder processing option
