@@ -17,7 +17,7 @@ all_records = []
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def setup_browser():
+def setup_browser(use_profile=False):
     chrome_options = Options()
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
@@ -28,6 +28,11 @@ def setup_browser():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     chrome_options.page_load_strategy = 'eager'
+    
+    if use_profile:
+        chrome_options.add_argument('--user-data-dir=C:/Users/sathw/AppData/Local/Google/Chrome/User Data')
+        chrome_options.add_argument('--profile-directory=Default')
+        chrome_options.add_argument('--disable-features=VizDisplayCompositor')
     
     try:
         browser = webdriver.Chrome(options=chrome_options)
@@ -95,11 +100,17 @@ def extract_lat_lng(url):
         return latitude, longitude
     return None, None
 
-def Selenium_extractor_optimized(place):
+def Selenium_extractor_optimized(place, search_term="pharmacy", use_profile=False):
     browser = None
     try:
-        browser = setup_browser()
-        link = "https://www.google.com/maps/search/pharmacy+stores+in+" + place
+        browser = setup_browser(use_profile)
+        
+        if use_profile:
+            browser.get("https://accounts.google.com")
+            time.sleep(3)
+            logger.info("Browser opened with existing profile - check if logged in")
+        
+        link = f"https://www.google.com/maps/search/{search_term}+stores+in+" + place
         browser.get(link)
         
         time.sleep(5)
@@ -108,7 +119,7 @@ def Selenium_extractor_optimized(place):
         record_list = []
         a = browser.find_elements(By.CLASS_NAME, "hfpxzc")
         total_elements = len(a)
-        logger.info(f"Total elements found: {total_elements}")
+        logger.info(f"Total elements found for '{search_term}': {total_elements}")
         
         for i in range(total_elements):
             try:
@@ -164,14 +175,15 @@ def Selenium_extractor_optimized(place):
                     'Address': address,
                     'Website': website,
                     'Latitude': latitude,
-                    'Longitude': longitude
+                    'Longitude': longitude,
+                    'Search Term': search_term
                 })
                 
                 if (i + 1) % 10 == 0:
-                    logger.info(f"Processed {i + 1}/{total_elements} records")
+                    logger.info(f"Processed {i + 1}/{total_elements} records for '{search_term}'")
                 
             except Exception as e:
-                logger.warning(f"Error extracting item {i}: {e}")
+                logger.warning(f"Error extracting item {i} for '{search_term}': {e}")
                 continue
                 
     except Exception as e:
@@ -185,28 +197,36 @@ def Selenium_extractor_optimized(place):
     
     return record_list
 
-def run_optimized_scraping(place):
-    logger.info(f"Starting optimized scraping for {place}")
+def run_optimized_scraping(place, use_profile=False):
+    logger.info(f"Starting comprehensive scraping for {place}")
+    
+    search_terms = ["pharmacy", "medical store", "chemist", "medicine shop", "drug store"]
+    all_search_results = []
     
     try:
-        record_list = Selenium_extractor_optimized(place)
+        for search_term in search_terms:
+            logger.info(f"Searching for: {search_term}")
+            record_list = Selenium_extractor_optimized(place, search_term, use_profile)
+            if record_list:
+                all_search_results.extend(record_list)
+            
+            time.sleep(2)
         
         global all_records
-        all_records.extend(record_list)
+        all_records.extend(all_search_results)
         
-        logger.info(f"Extracted {len(record_list)} records for {place}")
+        logger.info(f"Total extracted records from all searches: {len(all_search_results)}")
         
     except Exception as e:
         logger.error(f"Failed to scrape {place}: {e}")
 
-
-places = ["201012"]
+places = ["201014"]
 
 start_time = time.time()
 
 for place in places:
     all_records = []
-    run_optimized_scraping(place)
+    run_optimized_scraping(place, use_profile=False)
     
     if all_records:
         df = pd.DataFrame(all_records)
