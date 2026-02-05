@@ -2,6 +2,8 @@ import pandas as pd
 import pymongo
 from datetime import datetime
 from typing import Dict, Optional
+import os
+import glob
 
 clients = {
     "prod": pymongo.MongoClient(
@@ -113,7 +115,7 @@ def process_excel_file(file_path: str, dry_run: bool = True) -> Dict:
         update_data = {
             "bill_product": bill_product,
             "skuID": sku_id,
-            "updatedBy": "siddu skuID update script",
+            "updatedBy": "SIDDU-UTTARAKHAND-SKUID-SCRIPT",
             "updatedTime": datetime.now()
         }
         
@@ -175,14 +177,84 @@ def process_excel_file(file_path: str, dry_run: bool = True) -> Dict:
     
     return {"status": "no_updates", "message": "No updates to perform"}
 
+def process_folder(folder_path: str, dry_run: bool = True) -> Dict:
+    """Process all CSV/Excel files in a folder"""
+    if not os.path.exists(folder_path):
+        return {"status": "error", "message": f"Folder does not exist: {folder_path}"}
+    
+    # Find all CSV and Excel files in the folder
+    file_patterns = ["*.csv", "*.xlsx", "*.xls"]
+    files_to_process = []
+    
+    for pattern in file_patterns:
+        files_to_process.extend(glob.glob(os.path.join(folder_path, pattern)))
+    
+    if not files_to_process:
+        return {"status": "error", "message": f"No CSV or Excel files found in: {folder_path}"}
+    
+    print(f"Found {len(files_to_process)} files to process:")
+    for file in files_to_process:
+        print(f"  - {os.path.basename(file)}")
+    print()
+    
+    total_results = {
+        "status": "success",
+        "total_files": len(files_to_process),
+        "processed_files": 0,
+        "total_updates": 0,
+        "total_skipped": 0,
+        "total_not_found": 0,
+        "file_results": [],
+        "errors": []
+    }
+    
+    for file_path in files_to_process:
+        print(f"\n{'='*60}")
+        print(f"Processing file: {os.path.basename(file_path)}")
+        print(f"{'='*60}")
+        
+        result = process_excel_file(file_path, dry_run=dry_run)
+        total_results["file_results"].append({
+            "file": os.path.basename(file_path),
+            "result": result
+        })
+        
+        if result["status"] in ["success", "dry_run"]:
+            total_results["processed_files"] += 1
+            if "updates_performed" in result:
+                total_results["total_updates"] += result["updates_performed"]
+            elif "updates_prepared" in result:
+                total_results["total_updates"] += result["updates_prepared"]
+            
+            total_results["total_skipped"] += result["skipped_rows"]
+            total_results["total_not_found"] += result["not_found_skus"]
+        else:
+            total_results["errors"].append({
+                "file": os.path.basename(file_path),
+                "error": result.get("message", "Unknown error")
+            })
+    
+    return total_results
+
 excel_file_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Uttarakhand Medicos\suggestions_batch_1_rows.csv"  # Update this path
-dry_run = True  # Set to False to execute actual updates
+dry_run = False  # Set to False to execute actual updates
 
-print(f"Processing file: {excel_file_path}")
-print(f"Dry run mode: {dry_run}")
-print("-" * 50)
+# NEW: Folder processing option
+folder_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Uttarakhand Medicos"  # Update this path to your folder
+use_folder_mode = True  # Set to True to process all files in folder, False to use single file
 
-result = process_excel_file(excel_file_path, dry_run=dry_run)
+if use_folder_mode:
+    print(f"Processing folder: {folder_path}")
+    print(f"Dry run mode: {dry_run}")
+    print("-" * 50)
+    
+    result = process_folder(folder_path, dry_run=dry_run)
+else:
+    print(f"Processing file: {excel_file_path}")
+    print(f"Dry run mode: {dry_run}")
+    print("-" * 50)
+    
+    result = process_excel_file(excel_file_path, dry_run=dry_run)
 
 print("-" * 50)
 print("Result:", result)
