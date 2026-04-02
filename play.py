@@ -1,29 +1,33 @@
-import cv2
+import json
 import requests
-import numpy as np
-import pytesseract
+import time
 
-# Set the path to Tesseract executable
-pytesseract.pytesseract.tesseract_cmd = r'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+API_KEY = "htr4t0oy2e6um0eeqjt9owlx1crab3se"
+SOURCE = "918800171823"
+TEMPLATE_ID = "02d0680f-4409-4f13-8021-03a3038095c9"
 
-# URL of the image
-image_url = 'https://i.stack.imgur.com/i1Abv.png'
+url = "https://api.gupshup.io/wa/api/v1/template/msg"
 
-# Download the image from the URL
-response = requests.get(image_url)
-image_array = np.frombuffer(response.content, dtype=np.uint8)
+headers = {
+    "apikey": API_KEY,
+    "Content-Type": "application/x-www-form-urlencoded"
+}
 
-# Decode the image array to OpenCV format
-image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+for i in ["919391198374"]:
+    template_data = {
+        "id": TEMPLATE_ID,
+        "language": "hi",   # MUST match dashboard
+        "params": ["CareEco Test Supplier Pvt Ltd", 'CareEco Test Supplier Pvt Ltd hi hello how are you man', "WSG9/EBS/0000003"]
+    }
 
-# Convert the image to grayscale
-gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    payload = {
+        "source": SOURCE,
+        "destination": i,
+        "channel": "whatsapp",
+        "template": json.dumps(template_data)
+    }
 
-# Resize the image
-gray = cv2.resize(gray, None, fx=2, fy=2)
+    response = requests.post(url, data=payload, headers=headers)
+    print(i, response.text)
 
-# Recognize text using OCR
-text = pytesseract.image_to_string(gray)
-
-# Print the recognized text
-print(text)
+    time.sleep(1)

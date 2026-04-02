@@ -176,12 +176,12 @@ def create_bill_product_to_sku_mapping(folder_path: str) -> Dict[str, str]:
     return bill_product_sku_mapping
 
 def get_empty_sku_records() -> List[Dict]:
-    """Get records from purchase_sku_matching_result with empty skuID and updatedBy 'SIDDU-UTTARAKHAND'"""
-    print("Fetching records with empty skuID and updatedBy 'SIDDU-UTTARAKHAND'...")
+    """Get records from purchase_sku_matching_result with empty skuID and updatedBy 'Siddu-Singh'"""
+    print("Fetching records with empty skuID and updatedBy 'Siddu-Singh'...")
     
     query = {
         "skuID": "",
-        "updatedBy": "SIDDU-UTTARAKHAND"
+        "updatedBy": "Siddu-Singh"
     }
     
     records = list(purchase_sku_matching_result.find(query))
@@ -219,7 +219,7 @@ def update_sku_ids(bill_product_sku_mapping: Dict[str, str], dry_run: bool = Tru
                     {
                         "$set": {
                             "skuID": sku_id,
-                            "updatedBy": "SIDDU-UTTARAKHAND-SKUID-SCRIPT",
+                            "updatedBy": "SIDDU-SINGH-SKUID-SCRIPT",
                             "updatedTime": datetime.now()
                         }
                     }
@@ -239,11 +239,11 @@ def update_sku_ids(bill_product_sku_mapping: Dict[str, str], dry_run: bool = Tru
 
 def main():
     # Configuration
-    folder_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Uttarakhand Medicos"
+    folder_path = r"C:\Important Documents\CareEco utils\ELIXIRE utils\Singh Pharmacy"
     dry_run = False  # Set to False to execute actual updates
     
     print("=" * 60)
-    print("SKU ID Update Script for Uttarakhand Medicos")
+    print("SKU ID Update Script for Singh Medicos")
     print("=" * 60)
     print(f"Folder path: {folder_path}")
     print(f"Dry run mode: {dry_run}")

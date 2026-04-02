@@ -196,7 +196,7 @@ def Selenium_extractor_optimized(place, search_term="pharmacy", use_profile=Fals
 def run_optimized_scraping(place, use_profile=False):
     logger.info(f"Starting comprehensive scraping for {place}")
     
-    search_terms = ["medicos", "medical shop"]
+    search_terms = ["pharmacy", "medical store", "chemist", "medicine shop", "drug store", "medicos", "medical shop"]
     all_search_results = []
     
     try:
